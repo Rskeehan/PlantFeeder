@@ -1,9 +1,24 @@
 version: '3'
 services:
   raspberrypi:
-    build: .
+    build: ./docker/app/Dockerfile
     container_name: virtual_raspberry_pi
+    ports:
+     - "5000:5000"
     volumes:
       - .:/app
     network_mode: bridge
     tty: true
+    networks:
+      - plant_network
+  web:
+    build: ./docker/web/Dockerfile
+    container_name: Web-interface
+    ports:
+     - "3001:3001"
+    networks:
+      - plant_network
+
+networks:
+  plant_network:
+    driver: bridge
