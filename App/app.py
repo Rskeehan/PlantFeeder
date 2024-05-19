@@ -1,7 +1,10 @@
+import os
 import requests
 import time
 import logging
 import schedule
+import signal
+import sys
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -20,8 +23,8 @@ GPIO.setup(valve_pin, GPIO.OUT)
 
 # Function to check weather
 def check_weather():
-    api_key = "8716865398f8093d3f5893681e43bcc8"
-    city_id = "4178775"
+    api_key = os.getenv("API_KEY")
+    city_id = os.getenv("CITY_ID")
     url = f"http://api.openweathermap.org/data/2.5/weather?id={city_id}&appid={api_key}"
     try:
         response = requests.get(url)
@@ -58,10 +61,19 @@ def run_check_weather():
     else:
         logging.error("Failed to retrieve weather information")
 
-# Schedule check_weather to run once a day at a specific time (e.g., 8:00 AM)
+# Schedule check_weather to run once a day at a specific time (e.g., 2:00 PM)
 schedule.every().day.at("14:00").do(run_check_weather)
 
+def graceful_shutdown(signum, frame):
+    logging.info("Received shutdown signal, exiting gracefully...")
+    GPIO.cleanup()
+    sys.exit(0)
+
 if __name__ == "__main__":
+    # Handle termination signals
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
+
     # Run check_weather immediately
     run_check_weather()
 
