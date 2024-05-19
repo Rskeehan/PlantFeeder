@@ -1,0 +1,1 @@
+docker run -d --name app --env-file .env app
