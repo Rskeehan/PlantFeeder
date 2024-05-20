@@ -13,6 +13,16 @@ def index():
         response = requests.get(PLANT_FEEDER_URL)
         response.raise_for_status()  # Raise an HTTPError for bad responses
         weather_data = response.json()
+
+        # Convert temperature from Kelvin to Celsius and Fahrenheit
+        if 'temperature' in weather_data:
+            kelvin_temp = float(weather_data['temperature'].replace('K', ''))
+            celsius_temp = kelvin_temp - 273.15
+            fahrenheit_temp = (kelvin_temp - 273.15) * 9/5 + 32
+
+            weather_data['temperature_celsius'] = f"{celsius_temp:.2f} °C"
+            weather_data['temperature_fahrenheit'] = f"{fahrenheit_temp:.2f} °F"
+
         if 'error' in weather_data:
             return render_template('error.html', message=weather_data['error'])
         return render_template('weather.html', weather=weather_data)
