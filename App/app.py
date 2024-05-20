@@ -1,10 +1,10 @@
-import os
 import requests
 import time
 import logging
 import schedule
-import signal
-import sys
+from flask import Flask, jsonify
+import threading
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +20,9 @@ except (ImportError, RuntimeError):
 valve_pin = 18
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(valve_pin, GPIO.OUT)
+
+app = Flask(__name__)
+weather_data = {}
 
 # Function to check weather
 def check_weather():
@@ -46,6 +49,7 @@ def water_plants():
 
 # Function to run check_weather once a day
 def run_check_weather():
+    global weather_data
     logging.info("Running check_weather")
     weather_data = check_weather()
     if weather_data:
@@ -61,21 +65,33 @@ def run_check_weather():
     else:
         logging.error("Failed to retrieve weather information")
 
-# Schedule check_weather to run once a day at a specific time (e.g., 2:00 PM)
+# Flask route to expose weather information
+@app.route('/weather')
+def get_weather():
+    if weather_data:
+        main_weather = weather_data.get('weather', [{}])[0].get('main')
+        temperature = weather_data.get('main', {}).get('temp')
+        humidity = weather_data.get('main', {}).get('humidity')
+        condition = main_weather if main_weather else "Unknown"
+        
+        weather_info = {
+            "temperature": f"{temperature}K",  # Temperature in Kelvin
+            "humidity": f"{humidity}%",        # Humidity percentage
+            "condition": condition             # Weather condition
+        }
+        return jsonify(weather_info)
+    else:
+        return jsonify({"error": "Failed to retrieve weather information"})
+
+# Schedule check_weather to run once a day at a specific time (e.g., 8:00 AM)
 schedule.every().day.at("14:00").do(run_check_weather)
 
-def graceful_shutdown(signum, frame):
-    logging.info("Received shutdown signal, exiting gracefully...")
-    GPIO.cleanup()
-    sys.exit(0)
-
 if __name__ == "__main__":
-    # Handle termination signals
-    signal.signal(signal.SIGTERM, graceful_shutdown)
-    signal.signal(signal.SIGINT, graceful_shutdown)
-
     # Run check_weather immediately
     run_check_weather()
+
+    # Start a separate thread for the Flask app
+    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000)).start()
 
     # Keep the program running to allow scheduled tasks to execute
     while True:

@@ -1,21 +1,23 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 import requests
 
 app = Flask(__name__)
 
-# Endpoint of the plant-watering-app
-PLANT_WATERING_APP_URL = "http://plant-feeder:5000/weather"
+# URL for the Plant Feeder's weather API
+PLANT_FEEDER_URL = "http://plant-feeder:5000/weather"
 
-@app.route("/")
+# Route to display weather information
+@app.route('/')
 def index():
-    # Make a request to the plant-watering-app to get weather data
-    response = requests.get(PLANT_WATERING_APP_URL)
-    if response.status_code == 200:
+    try:
+        response = requests.get(PLANT_FEEDER_URL)
+        response.raise_for_status()  # Raise an HTTPError for bad responses
         weather_data = response.json()
-        # Pass weather data to the template
-        return render_template("index.html", weather=weather_data)
-    else:
-        return "Failed to fetch weather data"
+        if 'error' in weather_data:
+            return render_template('error.html', message=weather_data['error'])
+        return render_template('weather.html', weather=weather_data)
+    except requests.exceptions.RequestException as e:
+        return render_template('error.html', message=str(e))
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80)  # Run the app on port 80
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=80)

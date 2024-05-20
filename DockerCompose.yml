@@ -4,17 +4,23 @@ services:
   plant-feeder:
     build: ./App
     container_name: plant-feeder
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
     networks:
-      - app-network
+      - my_network
 
   web-interface:
     build: ./web
     container_name: web-interface
     ports:
       - "8080:80"
+    depends_on:
+      - plant-feeder
     networks:
-      - app-network
+      - my_network
 
 networks:
-  app-network:
+  my_network:
     driver: bridge
